@@ -13,7 +13,9 @@ const useSchema = new Schema({
   lastname: { type: 'string', required: true },
   email: { type: 'string', required: true },
   password: { type: 'string', required: true},
+  amount: { type: 'number', default: 100 },
   bets: [{
+    auto: { type: 'boolean', default: false },
     marketId: { type: 'string', required: true },
     competition: {
       id: { type: 'string', required: true },
@@ -29,7 +31,6 @@ const useSchema = new Schema({
     percentage: { type: 'number', required: true },
     amount: { type: 'number', required: true },
   }],
-  betConfig: { type: configSchema, required: false },
 })
 
 const UserModel = mongoose.model('User', useSchema);

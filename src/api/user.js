@@ -83,7 +83,6 @@ userApi.post('/bet', userSession, async (req, res) => {
   const user = await UserModel.findById(req.userId)
   if (_id) {
     const index = user.bets.findIndex((bet) => {
-      console.log(bet._id.toString())
       return bet._id.toString() === _id
     })
     if (index !== -1) {
@@ -106,6 +105,57 @@ userApi.post('/bet', userSession, async (req, res) => {
     await user.save()
   }
   res.status(201).send({ user })
+})
+
+userApi.post('/auto-bet', userSession, async(req, res, next) => {
+  const { amount, typeBet } = req.body
+  const percentageBet = typeBet === 'low' ? 1.05 : typeBet === 'medium' ? 1.1 : 1.15
+  const marketCataloguesResponse = await bet.listMarketCatalogue(15, "FIRST_TO_START")
+  if (marketCataloguesResponse.status === 200) {
+    const avaibleBets = []
+    for (let i = 0; i <  marketCataloguesResponse.data.result.length; i++) {
+      const {marketId, runners, competition} = marketCataloguesResponse.data.result[i];
+      for (let j = 0; j < runners.length; j++) {
+        const runner = runners[j];
+        const listRunneBooksResponse =  await bet.listRunnerBook(marketId, runner.selectionId)
+        if (listRunneBooksResponse.status !== 200) {
+          return  res.status(500)
+        }
+        const { availableToBack, availableToLay } = listRunneBooksResponse.data.result[0].runners[0].ex
+        let betsPrices = [...availableToBack, ...availableToLay]
+        betsPrices = availableToBack.filter(({ price }) => price <= percentageBet)
+        if (betsPrices.length > 0) {
+          avaibleBets.push({
+            marketId,
+            competition,
+            runners: runners. map((runner) => {
+              return {
+                selectionId: runner.selectionId,
+                runnerName: runner.runnerName
+              }
+            }),
+            selectionId: runner.selectionId,
+            percentage: betsPrices[0].price,
+            amount: amount / 3,
+            auto: true
+          })
+          if (avaibleBets.length === 3) {
+            console.log(avaibleBets)
+            req.avaibleBets = avaibleBets
+            return next()
+          }
+        }
+      }
+    }
+    return next()
+  } 
+ 
+}, async (req, res) => {
+  const { avaibleBets, userId } = req
+  const user = await UserModel.findById(userId)
+  user.bets = [...avaibleBets, ...user.bets]
+  await user.save()
+  res.status(201).send(avaibleBets)
 })
 
 module.exports = userApi
