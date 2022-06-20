@@ -111,10 +111,12 @@ userApi.post('/auto-bet', userSession, async(req, res, next) => {
   const { amount, typeBet } = req.body
   const percentageBet = typeBet === 'low' ? 1.05 : typeBet === 'medium' ? 1.1 : 1.15
   const marketCataloguesResponse = await bet.listMarketCatalogue(15, "FIRST_TO_START")
+  const user = await UserModel.findById(req.userId)
   if (marketCataloguesResponse.status === 200) {
     const avaibleBets = []
     for (let i = 0; i <  marketCataloguesResponse.data.result.length; i++) {
       const {marketId, runners, competition} = marketCataloguesResponse.data.result[i];
+      let bestRunner
       for (let j = 0; j < runners.length; j++) {
         const runner = runners[j];
         const listRunneBooksResponse =  await bet.listRunnerBook(marketId, runner.selectionId)
@@ -125,28 +127,40 @@ userApi.post('/auto-bet', userSession, async(req, res, next) => {
         let betsPrices = [...availableToBack, ...availableToLay]
         betsPrices = availableToBack.filter(({ price }) => price <= percentageBet)
         if (betsPrices.length > 0) {
+          bestRunner = {
+            runner,
+            betsPrices
+          }
+        }
+      }
+      if (bestRunner) {
+        let bet = user.bets.find((bet) => {
+          return bet.marketId === marketId || bet.competition.id === competition.id
+        })
+        if (!bet) {
           avaibleBets.push({
             marketId,
             competition,
-            runners: runners. map((runner) => {
+            runners: runners.map((runner) => {
               return {
                 selectionId: runner.selectionId,
                 runnerName: runner.runnerName
               }
             }),
-            selectionId: runner.selectionId,
-            percentage: betsPrices[0].price,
+            selectionId: bestRunner.runner.selectionId,
+            percentage: bestRunner.betsPrices[0].price,
             amount: amount / 3,
-            auto: true
+            auto: typeBet
           })
-          if (avaibleBets.length === 3) {
-            console.log(avaibleBets)
-            req.avaibleBets = avaibleBets
-            return next()
-          }
         }
       }
+      
+      if (avaibleBets.length === 3) {
+        req.avaibleBets = avaibleBets
+        return next()
+      }
     }
+    req.avaibleBets = avaibleBets
     return next()
   } 
  
