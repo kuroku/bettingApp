@@ -15,7 +15,7 @@ const useSchema = new Schema({
   password: { type: 'string', required: true},
   amount: { type: 'number', default: 100 },
   bets: [{
-    auto: { type: 'string', default: false },
+    auto: { type: 'string' },
     marketId: { type: 'string', required: true },
     competition: {
       id: { type: 'string', required: true },
