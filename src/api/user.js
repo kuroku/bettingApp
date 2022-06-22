@@ -117,49 +117,51 @@ userApi.post('/auto-bet', userSession, async(req, res, next) => {
     for (let i = 0; i <  marketCataloguesResponse.data.result.length; i++) {
       const {marketId, runners, competition} = marketCataloguesResponse.data.result[i];
       let bestRunner
-      for (let j = 0; j < runners.length; j++) {
-        const runner = runners[j];
-        const listRunneBooksResponse =  await bet.listRunnerBook(marketId, runner.selectionId)
-        if (listRunneBooksResponse.status !== 200) {
-          return  res.status(500)
-        }
-        const { availableToBack, availableToLay } = listRunneBooksResponse.data.result[0].runners[0].ex
-        let betsPrices = [...availableToBack, ...availableToLay]
-        betsPrices = availableToBack.filter(({ price }) => price <= percentageBet)
-        if (betsPrices.length > 0) {
-          bestRunner = {
-            runner,
-            betsPrices
+      if (competition) {
+        for (let j = 0; j < runners.length; j++) {
+          const runner = runners[j];
+          const listRunneBooksResponse =  await bet.listRunnerBook(marketId, runner.selectionId)
+          if (listRunneBooksResponse.status !== 200) {
+            return  res.status(500)
+          }
+          const { availableToBack, availableToLay } = listRunneBooksResponse.data.result[0].runners[0].ex
+          let betsPrices = [...availableToBack, ...availableToLay]
+          betsPrices = availableToBack.filter(({ price }) => price <= percentageBet)
+          if (betsPrices.length > 0) {
+            bestRunner = {
+              runner,
+              betsPrices
+            }
           }
         }
-      }
-      if (bestRunner) {
-        let bet = user.bets.find((bet) => {
-          if (!competition) return false
-          return bet.marketId === marketId || bet.competition.id === competition.id
-        })
-        if (!bet) {
-          avaibleBets.push({
-            marketId,
-            competition,
-            runners: runners.map((runner) => {
-              return {
-                selectionId: runner.selectionId,
-                runnerName: runner.runnerName
-              }
-            }),
-            selectionId: bestRunner.runner.selectionId,
-            percentage: bestRunner.betsPrices[0].price,
-            amount: amount / 3,
-            auto: typeBet
+        if (bestRunner) {
+          let bet = user.bets.find((bet) => {
+            return bet.marketId === marketId || bet.competition.id === competition.id
           })
+          if (!bet) {
+            avaibleBets.push({
+              marketId,
+              competition,
+              runners: runners.map((runner) => {
+                return {
+                  selectionId: runner.selectionId,
+                  runnerName: runner.runnerName
+                }
+              }),
+              selectionId: bestRunner.runner.selectionId,
+              percentage: bestRunner.betsPrices[0].price,
+              amount: amount / 3,
+              auto: typeBet
+            })
+          }
+        }
+        
+        if (avaibleBets.length === 3) {
+          req.avaibleBets = avaibleBets
+          return next()
         }
       }
       
-      if (avaibleBets.length === 3) {
-        req.avaibleBets = avaibleBets
-        return next()
-      }
     }
     req.avaibleBets = avaibleBets
     return next()
