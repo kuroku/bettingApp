@@ -109,7 +109,7 @@ userApi.post('/bet', userSession, async (req, res) => {
 
 userApi.post('/auto-bet', userSession, async(req, res, next) => {
   const { amount, typeBet } = req.body
-  const percentageBet = typeBet === 'low' ? [1, 1.05] : typeBet === 'medium' ? [1.05, 1.1] : [1.1, 1.15]
+  const percentageBet = typeBet === 'low' ? 1.05 : typeBet === 'medium' ? 1.1 : 1.15
   const marketCataloguesResponse = await bet.listMarketCatalogue(ITEM_PER_REQUEST_AUTO_BET, "FIRST_TO_START")
   const user = await UserModel.findById(req.userId)
   if (marketCataloguesResponse.status === 200) {
@@ -125,8 +125,7 @@ userApi.post('/auto-bet', userSession, async(req, res, next) => {
         }
         const { availableToBack, availableToLay } = listRunneBooksResponse.data.result[0].runners[0].ex
         let betsPrices = [...availableToBack, ...availableToLay]
-        const [ min, max ] = percentageBet
-        betsPrices = availableToBack.filter(({ price }) => price <= max && price >= min)
+        betsPrices = availableToBack.filter(({ price }) => price <= percentageBet)
         if (betsPrices.length > 0) {
           bestRunner = {
             runner,
