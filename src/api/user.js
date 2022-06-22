@@ -135,6 +135,7 @@ userApi.post('/auto-bet', userSession, async(req, res, next) => {
       }
       if (bestRunner) {
         let bet = user.bets.find((bet) => {
+          if (!competition) return false
           return bet.marketId === marketId || bet.competition.id === competition.id
         })
         if (!bet) {
